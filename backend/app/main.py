@@ -55,7 +55,7 @@ async def add_request_id_middleware(request: Request, call_next):
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now to ensure it works
+    allow_origins=["http://localhost:3000", "https://nexasecurity.vercel.app"],  # Allow all origins for now to ensure it works
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

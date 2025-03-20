@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional, Any
-from sqlalchemy.orm import Session
 from app.models.report import Report, ReportTemplate, ReportType, ReportFormat
 from app.models.scan import Scan
 from app.models.pentest import PenetrationTest

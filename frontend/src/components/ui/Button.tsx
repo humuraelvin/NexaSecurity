@@ -1,11 +1,13 @@
-"use client"
-import { useRouter } from "next/navigation";
+"use client";
 import Link from "next/link";
 import { ButtonProps } from "@/types";
 
-export default function Button({ children, pathname, className, onClick }: ButtonProps) {
-  const router = useRouter();
-  
+export default function Button({
+  children,
+  pathname,
+  className,
+  onClick,
+}: ButtonProps) {
   if (pathname) {
     return (
       <Link href={pathname} className={className}>
@@ -13,11 +15,10 @@ export default function Button({ children, pathname, className, onClick }: Butto
       </Link>
     );
   }
-  
+
   return (
     <button onClick={onClick} className={`${className} px-4 py-2 `}>
       {children}
     </button>
   );
 }
-
