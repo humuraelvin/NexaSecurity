@@ -6,6 +6,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { Toaster } from "react-hot-toast";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import CookieConsent from '@/components/CookieConsent';
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,6 +48,7 @@ export default function RootLayout({
               {children}
               <Toaster position="top-right" />
               <CookieConsent />
+              <ServiceWorkerRegistration />
             </AuthProvider>
           </ReactQueryProvider>
         </ErrorBoundary>

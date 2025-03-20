@@ -17,6 +17,7 @@ export default function NetworkScanPage() {
   const [searchResults, setSearchResults] = useState<any | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
   // Poll for scan status if a scan is in progress
   useEffect(() => {
@@ -59,7 +60,9 @@ export default function NetworkScanPage() {
     }
   };
 
-  const handleStartScan = async () => {
+  const handleStartScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!networkTarget) {
       toast.error("Please enter a network target");
       return;
@@ -76,24 +79,27 @@ export default function NetworkScanPage() {
     }
     
     try {
+      setLoading(true);
       setIsScanning(true);
       setLogs([`Starting ${scanType} scan on ${networkTarget}...`]);
       
       const config: ScanConfig = {
         networkTarget,
         outputDirectory,
-        scanType,
+        scanType: scanType as 'network' | 'web' | 'full',
         useCustomPasswordList,
         customPasswordList: customPasswordList || undefined
       };
       
-      const { scanId: newScanId } = await startNetworkScan(config);
-      setScanId(newScanId);
+      const result = await startNetworkScan(config);
+      setScanId(result.scanId);
       toast.success("Network scan started successfully!");
     } catch (error) {
       console.error("Error starting scan:", error);
       setIsScanning(false);
       toast.error("Failed to start network scan");
+    } finally {
+      setLoading(false);
     }
   };
 

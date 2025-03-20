@@ -1,8 +1,6 @@
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
-from app.models.report import Report, ReportTemplate, ReportType, ReportFormat
-from app.models.scan import Scan
-from app.models.pentest import PenetrationTest
+from app.models.report import  ReportType, ReportFormat
 from datetime import datetime
 import json
 import os
@@ -375,7 +373,4 @@ class ReportGenerator:
             return []
 
         templates = await self.db["report_templates"].find(query).to_list(length=None)
-        return [ReportTemplateInDB(**t) for t in templates]
-
-# Create global report generator instance
-report_generator = ReportGenerator() 
+        return [ReportTemplateInDB(**t) for t in templates] 

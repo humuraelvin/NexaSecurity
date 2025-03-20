@@ -7,9 +7,10 @@ import DataFetcher from "@/components/dashboard/DataFetcher";
 import dynamic from "next/dynamic";
 import CyberLoader from "@/components/ui/CyberLoader";
 
-const ThreatChart = dynamic(() => import("@/components/dashboard/ThreatChart"), {
-  loading: () => <div className="h-80 bg-gray-900/50 backdrop-blur-sm border border-gray-800/60 rounded-lg animate-pulse"></div>,
-  ssr: false
+// Lazy load heavy components
+const ThreatChart = dynamic(() => import('@/components/dashboard/ThreatChart'), {
+  loading: () => <div>Loading chart...</div>,
+  ssr: false // Disable server-side rendering for this component
 });
 
 export default function Dashboard() {

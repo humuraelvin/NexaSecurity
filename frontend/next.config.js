@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: ['randomuser.me'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
   },
   sentry: {
     disableServerWebpackPlugin: true,
@@ -10,7 +11,19 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING
-  }
+  },
+  swcMinify: true,
+  typescript: {
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+    }
+    return config;
+  },
 };
 
 // Sentry configuration

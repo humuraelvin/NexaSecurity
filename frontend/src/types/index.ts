@@ -99,34 +99,30 @@ export interface Alert {
 }
 
 export interface ScanResult {
-  id: string;
-  timestamp: string;
-  networkTarget: string;
-  scanType: 'basic' | 'full';
-  status: 'in_progress' | 'completed' | 'failed';
+  scanId: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
   progress: number;
-  services: {
+  findings: any[];
+  services?: {
     name: string;
     port: number;
-    version: string;
-    vulnerabilities?: string[];
+    status: string;
+    version?: string;
   }[];
   weakCredentials?: {
     service: string;
-    host: string;
-    port: number;
     username: string;
     password: string;
   }[];
   vulnerabilities?: {
-    host: string;
+    id: string;
+    severity: 'critical' | 'high' | 'medium' | 'low';
     service: string;
-    cve?: string;
+    host: string;
     description: string;
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    exploitAvailable: boolean;
+    cve?: string;
+    exploitAvailable?: boolean;
   }[];
-  logs: string[];
 }
 
 export interface PentestFinding {

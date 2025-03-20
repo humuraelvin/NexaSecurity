@@ -9,18 +9,22 @@ from app.models.scan import (
     ScanStatus, 
     VulnerabilitySeverity,
     ScanInDB,
-    VulnerabilityInDB
+    VulnerabilityInDB,
+    Scan
 )
 from app.models.pentest import (
     PentestStatus,
     FindingSeverity,
     FindingStatus,
     PentestInDB,
-    FindingInDB
+    FindingInDB,
+    PenetrationTest
 )
 from datetime import datetime, timedelta
 from bson import ObjectId
 import calendar
+from app.models.vulnerability import Vulnerability
+from app.models.pentest import PentestFinding
 
 router = APIRouter()
 

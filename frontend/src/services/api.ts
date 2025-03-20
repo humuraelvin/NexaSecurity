@@ -2,18 +2,22 @@ import axios from 'axios';
 import { fetchConfig, API_URL } from '@/lib/api';
 import { secureStorage } from '@/lib/storage';
 
-
-
+// Add auth token to request headers
+const getAuthHeaders = () => {
+  let token = '';
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('auth_token') || '';
+  }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
+  };
+};
 
 const fetchOptions = {
   credentials: 'include' as RequestCredentials,
   mode: 'cors' as RequestMode,
-  headers: {
-    'Content-Type': 'application/json',
-    ...(typeof window !== 'undefined' && secureStorage.get('token') 
-      ? { 'Authorization': `Bearer ${secureStorage.get('token')}` } 
-      : {})
-  }
+  headers: getAuthHeaders()
 };
 
 // Helper function to handle API errors
@@ -252,12 +256,14 @@ export const dashboardApi = {
     }
   }
 };
+
 const axiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 export const api = {
   setToken: (token: string) => {
     secureStorage.set('token', token);
@@ -283,5 +289,38 @@ export const api = {
   // Original auth endpoints
   authApi,
   scanApi,
-  dashboardApi
+  dashboardApi,
+
+  get: async (endpoint: string) => {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...fetchOptions,
+      method: 'GET'
+    });
+
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+
+    return response.json();
+  },
+
+  post: async (endpoint: string, data: any) => {
+    const options = {
+      ...fetchOptions,
+      method: 'POST',
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    };
+
+    if (!(data instanceof FormData)) {
+      options.headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, options);
+
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+
+    return response.json();
+  }
 }; 

@@ -1,11 +1,13 @@
+"use client"
 
-    "use client"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { useAuthContext } from "@/providers/AuthProvider";
 import AuthForm from "@/components/AuthForm";
+import { api } from '@/services/api';
+import Image from "next/image";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,9 +15,11 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuthContext();
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     
     if (!email || !password) {
       toast.error("Please enter both email and password");
@@ -24,12 +28,16 @@ export default function Login() {
     
     try {
       setIsLoading(true);
-      await login({ email, password });
+    
+      const response = await login({
+        email: email,
+        password: password,
+      });
       toast.success("Login successful!");
       router.push("/dashboard");
-    } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Invalid email or password");
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -41,7 +49,7 @@ export default function Login() {
         <div className="p-8">
           <div className="flex justify-center mb-6">
             <Link href="/">
-              <img src="/logo.png" alt="NexaSec Logo" className="h-32" />
+              <Image src="/logo.png" alt="NexaSec Logo" className="h-32" width={100} height={100} />
             </Link>
           </div>
           

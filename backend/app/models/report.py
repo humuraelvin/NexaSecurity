@@ -1,22 +1,42 @@
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
-from app.models.base import MongoBaseModel, PyObjectId
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 class ReportType(str, Enum):
     SCAN = "scan"
     PENTEST = "pentest"
-    VULNERABILITY = "vulnerability"
     COMPLIANCE = "compliance"
-    EXECUTIVE = "executive"
 
 class ReportFormat(str, Enum):
     PDF = "pdf"
     HTML = "html"
     DOCX = "docx"
-    JSON = "json"
-    CSV = "csv"
+
+class Report(BaseModel):
+    id: str
+    title: str
+    report_type: str
+    format: str
+    scan_id: Optional[str] = None
+    pentest_id: Optional[str] = None
+    template_id: Optional[str] = None
+    file_path: Optional[str] = None
+    status: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class ReportTemplate(BaseModel):
+    id: str
+    name: str
+    description: str
+    report_type: str
+    format: str
+    is_public: bool
+    created_by: str
+    version: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class ReportStatus(str, Enum):
     PENDING = "pending"

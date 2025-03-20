@@ -1,33 +1,46 @@
-import { fetchConfig, API_URL } from '@/lib/api';
-import { ScanResult } from '@/types';
+import { api } from './api';
+import type { ScanResult } from '@/types';
+import { API_URL, fetchConfig } from '@/lib/api';
 
 export interface ScanConfig {
   networkTarget: string;
   outputDirectory: string;
-  scanType: 'basic' | 'full';
-  customPasswordList?: File;
+  scanType: 'network' | 'web' | 'full';
   useCustomPasswordList: boolean;
+  customPasswordList?: File;
 }
 
-export const scanApi = {
-  startScan: async (config: any) => {
-    const response = await fetch(`${API_URL}/scans/start`, {
-      method: 'POST',
-      ...fetchConfig,
-      body: JSON.stringify(config)
-    });
-    
-    if (!response.ok) throw new Error('Failed to start scan');
-    return response.json();
+export const scanService = {
+  startScan: async (config: ScanConfig): Promise<{ scanId: string }> => {
+    try {
+      // Create FormData if there's a file
+      if (config.customPasswordList) {
+        const formData = new FormData();
+        formData.append('networkTarget', config.networkTarget);
+        formData.append('outputDirectory', config.outputDirectory);
+        formData.append('scanType', config.scanType);
+        formData.append('useCustomPasswordList', String(config.useCustomPasswordList));
+        formData.append('customPasswordList', config.customPasswordList);
+        
+        const response = await api.post('/scans/start', formData);
+        return response;
+      }
+      const response = await api.post('/scans/start', config);
+      return response;
+    } catch (error) {
+      console.error('Error starting scan:', error);
+      throw new Error('Failed to start scan. Please try again.');
+    }
   },
 
-  getScanStatus: async (id: string) => {
-    const response = await fetch(`${API_URL}/scans/${id}/status`, {
-      ...fetchConfig
-    });
-    
-    if (!response.ok) throw new Error('Failed to get scan status');
-    return response.json();
+  getScanStatus: async (scanId: string): Promise<ScanResult> => {
+    try {
+      const response = await api.get(`/scans/${scanId}`);
+      return response;
+    } catch (error) {
+      console.error('Error getting scan status:', error);
+      throw new Error('Failed to get scan status');
+    }
   },
 
   getScanResults: async (id: string): Promise<ScanResult> => {
@@ -60,9 +73,9 @@ export const scanApi = {
 };
 
 // Export individual functions for backward compatibility
-export const startNetworkScan = scanApi.startScan;
-export const getScanStatus = scanApi.getScanStatus;
-export const getScanResults = scanApi.getScanResults;
-export const searchScanResults = scanApi.getAllScans;
-export const downloadScanResults = scanApi.downloadResults;
+export const startNetworkScan = scanService.startScan;
+export const getScanStatus = scanService.getScanStatus;
+export const getScanResults = scanService.getScanResults;
+export const searchScanResults = scanService.getAllScans;
+export const downloadScanResults = scanService.downloadResults;
 export type { ScanResult } from '@/types'; 
