@@ -87,8 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.refresh_token) {
           localStorage.setItem('refresh_token', response.refresh_token);
         }
-        
-        // Create user data object from response
         const userData: User = {
           email: credentials.email,
           is_active: true,
@@ -152,8 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.replace('/');
     }
   };
-  
-  // Show loading state while checking authentication
+
   if (isLoadingUser) {
     return <CyberLoader text="Initializing secure environment..." />;
   }

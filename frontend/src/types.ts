@@ -46,6 +46,37 @@ export interface Vulnerability {
   description: string;
 }
 
+export interface ScanResult {
+  id: string;
+  timestamp: string;
+  networkTarget: string;
+  scanType: 'basic' | 'full';
+  status: 'in_progress' | 'completed' | 'failed';
+  progress: number;
+  services: {
+    name: string;
+    port: number;
+    version: string;
+    vulnerabilities?: string[];
+  }[];
+  weakCredentials?: {
+    service: string;
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+  }[];
+  vulnerabilities?: {
+    host: string;
+    service: string;
+    cve?: string;
+    description: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    exploitAvailable: boolean;
+  }[];
+  logs: string[];
+}
+
 export interface SystemHealth {
   totalThreats: {
     percentage: number;

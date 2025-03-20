@@ -16,7 +16,7 @@ export default function Testimonials({id}: {id?: string}) {
     },
     {
       quote: "The team at NexaSec understands the unique security challenges we face in East Africa. Their solutions are tailored to our specific needs.",
-      author: "Jean-Paul Kagame",
+      author: "Irasubiza Saly Nelson",
       title: "IT Director, Kigali Innovations",
       image: "https://randomuser.me/api/portraits/men/54.jpg"
     },

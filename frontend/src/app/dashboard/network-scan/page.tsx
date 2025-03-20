@@ -101,12 +101,22 @@ export default function NetworkScanPage() {
     if (!scanId || !searchQuery) return;
     
     try {
-      const results = await searchScanResults(scanId, searchQuery);
-      setSearchResults(results);
+      const results = await searchScanResults(scanId);
+      // Filter results client-side based on searchQuery
+      const filteredResults = filterResultsByQuery(results, searchQuery);
+      setSearchResults(filteredResults);
     } catch (error) {
       console.error("Error searching results:", error);
       toast.error("Failed to search scan results");
     }
+  };
+
+  // Add helper function to filter results
+  const filterResultsByQuery = (results: any, query: string) => {
+    // Implement your search logic here
+    return results.filter((result: any) => 
+      JSON.stringify(result).toLowerCase().includes(query.toLowerCase())
+    );
   };
 
   const handleDownload = async () => {

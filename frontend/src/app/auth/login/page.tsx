@@ -1,4 +1,5 @@
-"use client"
+
+    "use client"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -25,6 +26,7 @@ export default function Login() {
       setIsLoading(true);
       await login({ email, password });
       toast.success("Login successful!");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       toast.error("Invalid email or password");
@@ -39,7 +41,7 @@ export default function Login() {
         <div className="p-8">
           <div className="flex justify-center mb-6">
             <Link href="/">
-              <img src="/logo.png" alt="NexaSec Logo" className="h-12" />
+              <img src="/logo.png" alt="NexaSec Logo" className="h-32" />
             </Link>
           </div>
           

@@ -1,10 +1,19 @@
-// Base API URL - would come from environment variables in a real app
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.nexasec.rw';
+import axios from 'axios';
+import { fetchConfig, API_URL } from '@/lib/api';
+import { secureStorage } from '@/lib/storage';
 
-// Common fetch options with CORS settings
+
+
+
 const fetchOptions = {
   credentials: 'include' as RequestCredentials,
-  mode: 'cors' as RequestMode
+  mode: 'cors' as RequestMode,
+  headers: {
+    'Content-Type': 'application/json',
+    ...(typeof window !== 'undefined' && secureStorage.get('token') 
+      ? { 'Authorization': `Bearer ${secureStorage.get('token')}` } 
+      : {})
+  }
 };
 
 // Helper function to handle API errors
@@ -30,12 +39,8 @@ export const authApi = {
       console.log('Login attempt with:', credentials.email);
       const response = await fetch(`${API_URL}/auth/login/json`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(credentials),
-        ...fetchOptions
+        ...fetchOptions,
+        body: JSON.stringify(credentials)
       });
       
       return await handleApiResponse(response);
@@ -56,12 +61,8 @@ export const authApi = {
       console.log('Signup attempt for:', userData.email);
       const response = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(userData),
-        ...fetchOptions
+        ...fetchOptions,
+        body: JSON.stringify(userData)
       });
       
       return await handleApiResponse(response);
@@ -83,15 +84,15 @@ export const authApi = {
       }
       
       // Clean up local storage even if server logout fails
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
+      secureStorage.remove('user');
+      secureStorage.remove('token');
       
       return true;
     } catch (error) {
       console.error('Logout error:', error);
       // Clean up local storage even if server logout fails
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
+      secureStorage.remove('user');
+      secureStorage.remove('token');
       return true; // Still consider logout successful for the client
     }
   }
@@ -198,7 +199,9 @@ export const scanApi = {
 export const dashboardApi = {
   getSystemHealth: async () => {
     try {
-      const response = await fetch(`${API_URL}/dashboard/system-health`);
+      const response = await fetch(`${API_URL}/dashboard/system-health`, {
+        ...fetchOptions
+      });
       
       if (!response.ok) {
         throw new Error('Failed to get system health');
@@ -217,7 +220,9 @@ export const dashboardApi = {
         ? `${API_URL}/dashboard/alerts?limit=${limit}` 
         : `${API_URL}/dashboard/alerts`;
         
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        ...fetchOptions
+      });
       
       if (!response.ok) {
         throw new Error('Failed to get alerts');
@@ -232,7 +237,9 @@ export const dashboardApi = {
   
   getThreatData: async () => {
     try {
-      const response = await fetch(`${API_URL}/dashboard/threat-data`);
+      const response = await fetch(`${API_URL}/dashboard/threat-data`, {
+        ...fetchOptions
+      });
       
       if (!response.ok) {
         throw new Error('Failed to get threat data');
@@ -244,4 +251,37 @@ export const dashboardApi = {
       throw error;
     }
   }
+};
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+export const api = {
+  setToken: (token: string) => {
+    secureStorage.set('token', token);
+  },
+
+  setUser: (user: any) => {
+    secureStorage.set('user', user);
+  },
+
+  getToken: () => {
+    return secureStorage.get('token');
+  },
+  
+  getUser: () => {
+    return secureStorage.get('user');
+  },
+
+  clearAuth: () => {
+    secureStorage.remove('token');
+    secureStorage.remove('user');
+  },
+
+  // Original auth endpoints
+  authApi,
+  scanApi,
+  dashboardApi
 }; 

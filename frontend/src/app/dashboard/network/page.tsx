@@ -7,6 +7,9 @@ import ActionButtons from "@/components/dashboard/ActionButtons";
 import SummaryCards from "@/components/dashboard/SummaryCards";
 import DataFetcher from "@/components/dashboard/DataFetcher";
 import { Network, Shield, AlertTriangle } from "lucide-react";
+import api2 from "@/lib/api";
+import { scanApi } from "@/services/scanService";
+import { networkApi } from "@/services/networkService";
 
 interface NetworkDevice {
   id: string;
@@ -35,100 +38,25 @@ export default function NetworkPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanHistory, setScanHistory] = useState<NetworkScan[]>([]);
 
-  // Mock data for network devices
-  const mockDevices: NetworkDevice[] = [
-    {
-      id: "dev-001",
-      name: "Main Server",
-      ip: "192.168.1.10",
-      type: "server",
-      status: "online",
-      lastSeen: "Just now",
-      vulnerabilities: 3
-    },
-    {
-      id: "dev-002",
-      name: "Backup Server",
-      ip: "192.168.1.11",
-      type: "server",
-      status: "online",
-      lastSeen: "2 minutes ago",
-      vulnerabilities: 1
-    },
-    {
-      id: "dev-003",
-      name: "Developer Workstation",
-      ip: "192.168.1.25",
-      type: "workstation",
-      status: "online",
-      lastSeen: "Just now",
-      vulnerabilities: 0
-    },
-    {
-      id: "dev-004",
-      name: "Marketing Laptop",
-      ip: "192.168.1.35",
-      type: "laptop",
-      status: "offline",
-      lastSeen: "3 hours ago",
-      vulnerabilities: 5
-    },
-    {
-      id: "dev-005",
-      name: "Network Printer",
-      ip: "192.168.1.50",
-      type: "iot",
-      status: "online",
-      lastSeen: "5 minutes ago",
-      vulnerabilities: 2
-    },
-    {
-      id: "dev-006",
-      name: "WiFi Router",
-      ip: "192.168.1.1",
-      type: "network",
-      status: "online",
-      lastSeen: "Just now",
-      vulnerabilities: 0
-    }
-  ];
-
-  // Mock scan history
-  const mockScanHistory: NetworkScan[] = [
-    {
-      id: "scan-001",
-      timestamp: "2023-05-15 14:30:22",
-      duration: "3m 45s",
-      devicesScanned: 12,
-      vulnerabilitiesFound: 5,
-      status: "completed"
-    },
-    {
-      id: "scan-002",
-      timestamp: "2023-05-10 09:15:10",
-      duration: "4m 12s",
-      devicesScanned: 10,
-      vulnerabilitiesFound: 8,
-      status: "completed"
-    },
-    {
-      id: "scan-003",
-      timestamp: "2023-05-05 18:22:45",
-      duration: "3m 30s",
-      devicesScanned: 11,
-      vulnerabilitiesFound: 3,
-      status: "completed"
-    }
-  ];
-
-  // Load mock data on component mount
   useEffect(() => {
-    setDevices(mockDevices);
-    setFilteredDevices(mockDevices);
-    setScanHistory(mockScanHistory);
+    const loadData = async () => {
+      try {
+        const [devices, scanHistory] = await Promise.all([
+          networkApi.getNetworkMap(),
+          scanApi.getAllScans()
+        ]);
+        setDevices(devices);
+        setFilteredDevices(devices);
+        setScanHistory(scanHistory);
+      } catch (error) {
+        console.error('Error loading network data:', error);
+        toast.error('Failed to load network data');
+      }
+    };
+
+    loadData();
   }, []);
 
-  // Filter devices based on search query and active tab
   useEffect(() => {
     let filtered = devices;
     
@@ -154,28 +82,42 @@ export default function NetworkPage() {
     setFilteredDevices(filtered);
   }, [searchQuery, activeTab, devices]);
 
-  const handleRunScan = () => {
-    setIsScanning(true);
-    toast.loading("Network scan in progress...");
-    
-    // Simulate scan completion after 3 seconds
-    setTimeout(() => {
+  const handleRunScan = async () => {
+    try {
+      setIsScanning(true);
+      toast.loading("Network scan in progress...");
+      
+      // Start a new scan
+      const scan = await scanApi.startScan({
+        type: 'network',
+        target: 'all'
+      });
+
+      // Poll for scan completion
+      const pollInterval = setInterval(async () => {
+        const status = await scanApi.getScanStatus(scan.id);
+        if (status.completed) {
+          clearInterval(pollInterval);
+          setIsScanning(false);
+          toast.dismiss();
+          toast.success("Network scan completed");
+          
+          // Refresh data
+          const [newDevices, newHistory] = await Promise.all([
+            networkApi.getNetworkMap(),
+            scanApi.getAllScans()
+          ]);
+          setDevices(newDevices);
+          setScanHistory(newHistory);
+        }
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error running network scan:', error);
       setIsScanning(false);
       toast.dismiss();
-      toast.success("Network scan completed");
-      
-      // Add new scan to history
-      const newScan: NetworkScan = {
-        id: `scan-${Date.now()}`,
-        timestamp: new Date().toLocaleString(),
-        duration: "3m 22s",
-        devicesScanned: devices.length,
-        vulnerabilitiesFound: devices.reduce((total, device) => total + device.vulnerabilities, 0),
-        status: "completed"
-      };
-      
-      setScanHistory([newScan, ...scanHistory]);
-    }, 3000);
+      toast.error('Failed to run network scan');
+    }
   };
 
   return (

@@ -7,6 +7,9 @@ const nextConfig = {
   sentry: {
     disableServerWebpackPlugin: true,
     disableClientWebpackPlugin: true,
+  },
+  env: {
+    NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING
   }
 };
 
@@ -16,8 +19,6 @@ const { withSentryConfig } = require("@sentry/nextjs");
 module.exports = withSentryConfig(
   nextConfig,
   {
-    // For all available options, see:
-    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
     org: "byukusenge-andre",
     project: "javascript-nextjs-jz",

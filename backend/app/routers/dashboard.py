@@ -1,74 +1,85 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, desc
+from sqlalchemy import func, and_, desc, case
 from typing import Any, Dict, List, Optional
-from app.core.database import get_db
+from app.core.database import get_db, get_database
 from app.services.auth import get_current_user
-from app.models.user import User
-from app.models.scan import Scan, ScanStatus, Vulnerability, VulnerabilitySeverity
+from app.models.user import UserInDB
+from app.models.scan import (
+    ScanStatus, 
+    VulnerabilitySeverity,
+    ScanInDB,
+    VulnerabilityInDB
+)
 from app.models.pentest import (
-    PenetrationTest, PentestStatus, PentestFinding,
-    FindingSeverity, FindingStatus
+    PentestStatus,
+    FindingSeverity,
+    FindingStatus,
+    PentestInDB,
+    FindingInDB
 )
 from datetime import datetime, timedelta
+from bson import ObjectId
 import calendar
 
 router = APIRouter()
 
 @router.get("/overview")
 async def get_overview(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get overview statistics for the dashboard.
     """
     # Get counts for different entities
-    total_scans = db.query(func.count(Scan.id)).filter(Scan.user_id == current_user.id).scalar()
-    total_pentests = db.query(func.count(PenetrationTest.id)).filter(PenetrationTest.user_id == current_user.id).scalar()
+    total_scans = await db["scans"].count_documents({"user_id": ObjectId(current_user.id)})
+    total_pentests = await db["pentests"].count_documents({"user_id": ObjectId(current_user.id)})
     
     # Get vulnerability statistics
-    vulnerability_stats = (
-        db.query(
-            Vulnerability.severity,
-            func.count(Vulnerability.id).label("count")
-        )
-        .join(Scan)
-        .filter(Scan.user_id == current_user.id)
-        .group_by(Vulnerability.severity)
-        .all()
-    )
+    vulnerability_pipeline = [
+        {"$match": {"user_id": ObjectId(current_user.id)}},
+        {"$lookup": {
+            "from": "vulnerabilities",
+            "localField": "_id",
+            "foreignField": "scan_id",
+            "as": "vulnerabilities"
+        }},
+        {"$unwind": "$vulnerabilities"},
+        {"$group": {
+            "_id": "$vulnerabilities.severity",
+            "count": {"$sum": 1}
+        }}
+    ]
+    vulnerability_stats = await db["scans"].aggregate(vulnerability_pipeline).to_list(None)
     
     # Get finding statistics
-    finding_stats = (
-        db.query(
-            PentestFinding.severity,
-            func.count(PentestFinding.id).label("count")
-        )
-        .join(PenetrationTest)
-        .filter(PenetrationTest.user_id == current_user.id)
-        .group_by(PentestFinding.severity)
-        .all()
-    )
+    finding_pipeline = [
+        {"$match": {"user_id": ObjectId(current_user.id)}},
+        {"$lookup": {
+            "from": "findings",
+            "localField": "_id",
+            "foreignField": "pentest_id",
+            "as": "findings"
+        }},
+        {"$unwind": "$findings"},
+        {"$group": {
+            "_id": "$findings.severity",
+            "count": {"$sum": 1}
+        }}
+    ]
+    finding_stats = await db["pentests"].aggregate(finding_pipeline).to_list(None)
     
     # Get active scans and tests
-    active_scans = (
-        db.query(Scan)
-        .filter(
-            Scan.user_id == current_user.id,
-            Scan.status == ScanStatus.IN_PROGRESS
-        )
-        .count()
-    )
+    active_scans = await db["scans"].count_documents({
+        "user_id": ObjectId(current_user.id),
+        "status": ScanStatus.IN_PROGRESS
+    })
     
-    active_pentests = (
-        db.query(PenetrationTest)
-        .filter(
-            PenetrationTest.user_id == current_user.id,
-            PenetrationTest.status == PentestStatus.IN_PROGRESS
-        )
-        .count()
-    )
+    active_pentests = await db["pentests"].count_documents({
+        "user_id": ObjectId(current_user.id),
+        "status": PentestStatus.IN_PROGRESS
+    })
     
     return {
         "total_scans": total_scans,
@@ -76,10 +87,10 @@ async def get_overview(
         "active_scans": active_scans,
         "active_pentests": active_pentests,
         "vulnerability_statistics": {
-            severity.value: count for severity, count in vulnerability_stats
+            stat["_id"]: stat["count"] for stat in vulnerability_stats
         },
         "finding_statistics": {
-            severity.value: count for severity, count in finding_stats
+            stat["_id"]: stat["count"] for stat in finding_stats
         }
     }
 
@@ -87,7 +98,7 @@ async def get_overview(
 async def get_trends(
     days: int = 30,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get trend data for vulnerabilities and findings.
@@ -157,7 +168,7 @@ async def get_trends(
 async def get_recent_activity(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get recent activity across all entities.
@@ -244,7 +255,7 @@ async def get_monthly_summary(
     year: Optional[int] = None,
     month: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get monthly summary of security activities.
@@ -344,7 +355,7 @@ async def get_monthly_summary(
 @router.get("/security-score")
 async def get_security_score(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Calculate security score based on vulnerabilities and findings.
@@ -413,4 +424,65 @@ async def get_security_score(
             "Continue regular monitoring",
             "Plan for future security improvements"
         ]
-    } 
+    }
+
+@router.get("/system-health")
+async def get_system_health(
+    db = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
+) -> Any:
+    """
+    Get system health data for the dashboard.
+    """
+    # You can customize this with real data from your system
+    return {
+        "server_status": "Online",
+        "security": "96%",
+        "uptime": "99.8%"
+    }
+
+@router.get("/alerts")
+async def get_alerts(
+    db = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
+) -> Any:
+    """
+    Get recent security alerts.
+    """
+    # In a real implementation, you would fetch this from your database
+    return [
+        {
+            "type": "Port Scan",
+            "source": "192.168.1.105",
+            "severity": "high"
+        },
+        {
+            "type": "Login Attempt",
+            "source": "10.0.0.15",
+            "severity": "medium"
+        }
+    ]
+
+@router.get("/threat-data")
+async def get_threat_data(
+    db = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
+) -> Any:
+    """
+    Get threat activity data for dashboard charts.
+    """
+    # Sample threat data - in a real app, you would query your database
+    return [
+        {"date": "2023-01", "attacks": 45, "vulnerabilities": 12},
+        {"date": "2023-02", "attacks": 52, "vulnerabilities": 15},
+        {"date": "2023-03", "attacks": 38, "vulnerabilities": 10},
+        {"date": "2023-04", "attacks": 65, "vulnerabilities": 18},
+        {"date": "2023-05", "attacks": 48, "vulnerabilities": 13},
+        {"date": "2023-06", "attacks": 59, "vulnerabilities": 21},
+        {"date": "2023-07", "attacks": 72, "vulnerabilities": 25},
+        {"date": "2023-08", "attacks": 63, "vulnerabilities": 19},
+        {"date": "2023-09", "attacks": 55, "vulnerabilities": 16},
+        {"date": "2023-10", "attacks": 67, "vulnerabilities": 22},
+        {"date": "2023-11", "attacks": 78, "vulnerabilities": 28},
+        {"date": "2023-12", "attacks": 83, "vulnerabilities": 31}
+    ] 

@@ -2,11 +2,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.routers import auth, scan, pentest  # Temporarily remove report, dashboard, and vulnerability
+from app.routers import auth, scan, pentest, dashboard, report, vulnerability  # Temporarily remove report, dashboard, and vulnerability
 from app.core.database import connect_to_mongo, close_mongo_connection, create_indexes
 import logging
 import time
 import uuid
+import os
+
+from backend.app.models.scan import VulnerabilityBase
+
+# Create logs directory if it doesn't exist
+os.makedirs(os.path.dirname(settings.LOG_FILE_PATH), exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
@@ -55,12 +61,11 @@ async def add_request_id_middleware(request: Request, call_next):
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now to ensure it works
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["Content-Type", "X-Request-ID", "Authorization"],
-    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Database connection events
@@ -85,9 +90,9 @@ app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Aut
 app.include_router(scan.router, prefix=f"{settings.API_V1_STR}/scans", tags=["Scans"])
 app.include_router(pentest.router, prefix=f"{settings.API_V1_STR}/pentests", tags=["Penetration Tests"])
 # Temporarily disabled
-# app.include_router(vulnerability.router, prefix=f"{settings.API_V1_STR}/vulnerabilities", tags=["Vulnerabilities"])
-# app.include_router(report.router, prefix=f"{settings.API_V1_STR}/reports", tags=["Reports"])
-# app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["Dashboard"])
+app.include_router(vulnerability.router, prefix=f"{settings.API_V1_STR}/vulnerabilities", tags=["Vulnerabilities"])
+app.include_router(report.router, prefix=f"{settings.API_V1_STR}/reports", tags=["Reports"])
+app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["Dashboard"])
 
 @app.get("/")
 async def root():

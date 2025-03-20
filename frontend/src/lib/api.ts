@@ -2,11 +2,20 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getCookie, setCookie, deleteCookie } from 'cookies-next';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.nexasec.rw';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nexasecurity.onrender.com/api/v1';
 
-// Create axios instance
+export const fetchConfig = {
+  credentials: 'include' as RequestCredentials,
+  mode: 'cors' as RequestMode,
+  headers: {
+    'Content-Type': 'application/json',
+    ...(typeof window !== 'undefined' && localStorage.getItem('token') 
+      ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } 
+      : {})
+  }
+};
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,13 +38,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-    
-    // Handle 401 Unauthorized errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
       try {
-        // Try to refresh the token
         const refreshToken = getCookie('refresh_token');
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -43,9 +49,7 @@ apiClient.interceptors.response.use(
         
         const response = await apiClient.post('/auth/refresh', { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = response.data;
-        
-        // Update tokens in cookies
-        setCookie('auth_token', accessToken, { maxAge: 60 * 60 }); // 1 hour
+        setCookie('auth_token', accessToken, { maxAge: 60 * 60 }); 
         setCookie('refresh_token', newRefreshToken, { maxAge: 60 * 60 * 24 * 7 }); // 1 week
         
         // Retry the original request with new token

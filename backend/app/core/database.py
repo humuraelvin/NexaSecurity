@@ -1,5 +1,8 @@
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.database import Database
+from pymongo import MongoClient
 from app.core.config import settings
 import logging
 
@@ -7,32 +10,48 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("database")
 
-class MongoDB:
-    client: AsyncIOMotorClient = None
-    db: Database = None
+# SQLAlchemy setup
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-db = MongoDB()
+# MongoDB setup
+mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
+database = mongo_client[settings.MONGODB_NAME]
 
-async def get_database() -> Database:
-    if db.db is None:
-        logger.error("Database not initialized. Make sure connect_to_mongo was called.")
-    else:
-        logger.debug("Database connection accessed")
-    return db.db
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+async def get_database():
+    return database
+
+# Initialize collections
+def init_collections():
+    db = mongo_client[settings.MONGODB_NAME]
+    if "scans" not in db.list_collection_names():
+        db.create_collection("scans")
+    if "pentests" not in db.list_collection_names():
+        db.create_collection("pentests")
+    if "reports" not in db.list_collection_names():
+        db.create_collection("reports")
+    if "vulnerabilities" not in db.list_collection_names():
+        db.create_collection("vulnerabilities")
 
 async def connect_to_mongo():
     logger.info(f"Connecting to MongoDB at {settings.MONGODB_URL}...")
     try:
-        db.client = AsyncIOMotorClient(settings.MONGODB_URL)
-        db.db = db.client[settings.MONGODB_DB_NAME]
-        
         # Test connection by listing collections
-        collections = await db.db.list_collection_names()
+        collections = await database.list_collection_names()
         logger.info(f"Successfully connected to MongoDB. Available collections: {collections}")
         
         # Count documents in collections for verification
         for collection_name in COLLECTIONS.values():
-            count = await db.db[collection_name].count_documents({})
+            count = await database[collection_name].count_documents({})
             logger.info(f"Collection '{collection_name}' has {count} documents")
             
         return True
@@ -41,9 +60,9 @@ async def connect_to_mongo():
         return False
 
 async def close_mongo_connection():
-    if db.client:
+    if mongo_client:
         logger.info("Closing MongoDB connection...")
-        db.client.close()
+        mongo_client.close()
         logger.info("MongoDB connection closed")
 
 # Collection names for easy reference
@@ -100,7 +119,7 @@ async def create_indexes():
     logger.info("Creating MongoDB indexes...")
     try:
         for collection_name, indexes in INDEXES.items():
-            collection = db.db[collection_name]
+            collection = database[collection_name]
             for index in indexes:
                 index_name = await collection.create_index(index)
                 logger.info(f"Created index '{index_name}' on collection '{collection_name}'")

@@ -16,4 +16,4 @@ Sentry.init({
 });
 */
 
-console.log("Sentry edge initialization disabled");
+
