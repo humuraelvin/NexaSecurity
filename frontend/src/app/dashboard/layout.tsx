@@ -1,27 +1,28 @@
-"use client"
-import { useState, useEffect } from "react";
+"use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Network, 
-  ShieldAlert, 
-  FileBarChart, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Network,
+  ShieldAlert,
+  FileBarChart,
+  Settings,
   LogOut,
   Menu,
   X,
   Terminal,
-  Scan
+  Scan,
+  BotIcon,
 } from "lucide-react";
 import { useAuthContext } from "@/providers/AuthProvider";
+import Image from "next/image";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useAuthContext();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
@@ -59,6 +60,11 @@ export default function DashboardLayout({
       icon: <FileBarChart className="h-5 w-5" />,
     },
     {
+      name: "AI Agent",
+      href: "/dashboard/agent",
+      icon: <BotIcon className="h-5 w-5" />,
+    },
+    {
       name: "Settings",
       href: "/dashboard/settings",
       icon: <Settings className="h-5 w-5" />,
@@ -87,20 +93,30 @@ export default function DashboardLayout({
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="p-2 rounded-md bg-gray-800/80 text-gray-400 hover:text-white focus:outline-none"
         >
-          {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          {sidebarOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
         </button>
       </div>
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 transform transition-transform duration-300 ease-in-out ${
+        className={`sticky h-screen left-0 z-30 w-64 bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:static md:h-screen`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-center h-16 border-b border-gray-800">
             <Link href="/" className="flex items-center">
-              <img src="/logo.png" alt="NexaSec Logo" className="h-16" />
+              <Image
+                src="/logo.png"
+                width={64}
+                height={64}
+                alt="NexaSec Logo"
+                className="h-16"
+              />
             </Link>
           </div>
 
@@ -137,9 +153,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
           {/* Use key to force remount when path changes */}
-          <div key={pathname}>
-            {children}
-          </div>
+          <div>{children}</div>
         </main>
       </div>
 
@@ -152,4 +166,4 @@ export default function DashboardLayout({
       )}
     </div>
   );
-} 
+}
