@@ -24,9 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./app ./app
 
 # Create log directory and file
-RUN mkdir -p /var/log/nexasec && \
-    touch /var/log/nexasec/api.log && \
-    chmod 777 /var/log/nexasec/api.log
+RUN mkdir -p /app/logs && \
+    touch /app/logs/nexasec.log && \
+    chmod 777 /app/logs/nexasec.log
 
 # Expose port
 EXPOSE 8000
