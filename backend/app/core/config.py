@@ -5,7 +5,7 @@ import secrets
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "NexaSec"
+    PROJECT_NAME: str = "NexaSecurity"
     
     # Security
     SECRET_KEY: str = "your-secret-key-here"  # Change in production
@@ -30,9 +30,10 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",")]
         return v
 
-    # MongoDB settings
-    MONGODB_URL: str = "mongodb+srv://elvinhumura:123@cluster0.huok3f1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-    MONGODB_DB_NAME: str = "nexasec"
+    # Database settings
+    DATABASE_URL: str = "sqlite:///./sql_app.db"
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_NAME: str = "nexasecurity"
 
     # Scanning and Testing
     MAX_CONCURRENT_SCANS: int = 3

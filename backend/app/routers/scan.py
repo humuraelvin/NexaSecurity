@@ -9,8 +9,13 @@ from pydantic import BaseModel, validator
 import ipaddress
 from datetime import datetime
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+import logging
+from app.schemas import ScanStatus as ScanStatusSchema, ScanConfig
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 class ScanCreate(BaseModel):
     target: str
@@ -176,35 +181,28 @@ async def get_scan_vulnerabilities(
     # Format the response
     return [{**vuln, "id": str(vuln["_id"])} for vuln in vulns]
 
-@router.get("/{scan_id}/status")
+@router.get("/{scan_id}", response_model=ScanStatusSchema)
 async def get_scan_status(
     scan_id: str,
-    db = Depends(get_database),
-    current_user: UserInDB = Depends(get_current_user)
-) -> Any:
-    """
-    Get scan status and progress.
-    """
-    scan = await db["scans"].find_one({
-        "_id": ObjectId(scan_id),
-        "user_id": ObjectId(current_user.id)
-    })
-    
-    if not scan:
-        raise HTTPException(
-            status_code=404,
-            detail="Scan not found"
-        )
-    
-    progress = None
-    if scan["status"] == ScanStatus.IN_PROGRESS:
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+) -> dict:
+    """Get scan status."""
+    try:
         scanner = Scanner(db)
-        progress = await scanner.get_scan_progress(scan_id)
-    
-    return {
-        "status": scan["status"],
-        "progress": progress
-    }
+        status = await scanner.get_scan_status(db, scan_id)
+        if not status:
+            raise HTTPException(
+                status_code=404,
+                detail="Scan not found"
+            )
+        return status
+    except Exception as e:
+        logger.error(f"Error getting scan status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get scan status"
+        )
 
 @router.post("/{scan_id}/cancel")
 async def cancel_scan(
@@ -258,4 +256,33 @@ async def list_scans(
     scans = await cursor.to_list(length=limit)
     
     # Format the response
-    return [{**scan, "id": str(scan["_id"])} for scan in scans] 
+    return [{**scan, "id": str(scan["_id"])} for scan in scans]
+
+@router.post("/start", response_model=ScanResponse)
+async def start_scan(
+    scan_config: ScanConfig,
+    background_tasks: BackgroundTasks,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+) -> dict:
+    """Start a new network scan."""
+    try:
+        # Create scan document
+        scanner = Scanner(db)
+        scan_id = await scanner.start_scan(
+            db=db,
+            user_id=str(current_user.id),
+            config=scan_config
+        )
+        
+        return {
+            "scanId": str(scan_id),
+            "status": "pending",
+            "message": "Scan started successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error starting scan: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to start scan"
+        ) 

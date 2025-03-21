@@ -77,17 +77,28 @@ def get_password_hash(password: str) -> str:
     """Generate password hash."""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create JWT access token."""
-    to_encode = data.copy()
+def create_access_token(
+    user_id: str,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+    to_encode = {
+        "sub": str(user_id),
+        "exp": expire,
+        "type": "access"
+    }
     
-    to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    logger.info(f"Created access token for user_id={data.get('sub')}, expires at {expire}")
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM
+    )
+    
+    logger.info(f"Created access token for user_id={user_id}, expires at {expire}")
     return encoded_jwt
 
 def create_refresh_token(data: dict) -> str:
@@ -192,10 +203,11 @@ async def blacklist_refresh_token(
     )
 
 async def get_current_user(
+
     token: str = Depends(oauth2_scheme),
     db: AsyncIOMotorDatabase = Depends(get_database) 
+
 ) -> UserInDB:
-    """Get current user from JWT token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -203,27 +215,30 @@ async def get_current_user(
     )
     
     try:
+        # Decode JWT token
         payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+            token, 
+            settings.JWT_SECRET_KEY, 
+            algorithms=[settings.JWT_ALGORITHM]
         )
-        token_data = TokenPayload(**payload)
-        if token_data.type != "access":
-            logger.error(f"Token validation failed: invalid token type - {token_data.type}")
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
-    except JWTError:
-        logger.error("JWT decode error")
+            
+        token_type: str = payload.get("type")
+        if token_type != "access":
+            raise credentials_exception
+            
+    except JWTError as e:
+        logger.error(f"JWT validation error: {str(e)}")
         raise credentials_exception
-    
-    user = await get_user(db, token_data.sub)
+        
+    # Get user from database
+    user = await get_user(db, user_id)
     if user is None:
-        logger.error(f"Token validation failed: user not found - {token_data.sub}")
+        logger.error(f"User not found: {user_id}")
         raise credentials_exception
-    
-    if not user.is_active:
-        logger.error(f"Token validation failed: user is inactive - {token_data.sub}")
-        raise HTTPException(status_code=400, detail="Inactive user")
-    
-    logger.info(f"Current user authenticated: id={user._id}, email={user.email}, role={user.role}")
+        
     return user
 
 async def update_user_login(

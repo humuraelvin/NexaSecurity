@@ -30,5 +30,3 @@ Sentry.init({
   ],
 });
 */
-
-console.log("Sentry client initialization disabled"); 

@@ -17,6 +17,7 @@ export default function NetworkScanPage() {
   const [searchResults, setSearchResults] = useState<any | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
   // Poll for scan status if a scan is in progress
   useEffect(() => {
@@ -59,7 +60,9 @@ export default function NetworkScanPage() {
     }
   };
 
-  const handleStartScan = async () => {
+  const handleStartScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!networkTarget) {
       toast.error("Please enter a network target");
       return;
@@ -76,24 +79,27 @@ export default function NetworkScanPage() {
     }
     
     try {
+      setLoading(true);
       setIsScanning(true);
       setLogs([`Starting ${scanType} scan on ${networkTarget}...`]);
       
       const config: ScanConfig = {
         networkTarget,
         outputDirectory,
-        scanType,
+        scanType: scanType as 'network' | 'web' | 'full',
         useCustomPasswordList,
         customPasswordList: customPasswordList || undefined
       };
       
-      const { scanId: newScanId } = await startNetworkScan(config);
-      setScanId(newScanId);
+      const result = await startNetworkScan(config);
+      setScanId(result.scanId);
       toast.success("Network scan started successfully!");
     } catch (error) {
       console.error("Error starting scan:", error);
       setIsScanning(false);
       toast.error("Failed to start network scan");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,12 +107,22 @@ export default function NetworkScanPage() {
     if (!scanId || !searchQuery) return;
     
     try {
-      const results = await searchScanResults(scanId, searchQuery);
-      setSearchResults(results);
+      const results = await searchScanResults(scanId);
+      // Filter results client-side based on searchQuery
+      const filteredResults = filterResultsByQuery(results, searchQuery);
+      setSearchResults(filteredResults);
     } catch (error) {
       console.error("Error searching results:", error);
       toast.error("Failed to search scan results");
     }
+  };
+
+  // Add helper function to filter results
+  const filterResultsByQuery = (results: any, query: string) => {
+    // Implement your search logic here
+    return results.filter((result: any) => 
+      JSON.stringify(result).toLowerCase().includes(query.toLowerCase())
+    );
   };
 
   const handleDownload = async () => {

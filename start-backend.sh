@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /home/humura/NexaSec/backend
+cd /mnt/d/NexaSecurity/backend
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then

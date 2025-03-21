@@ -2,14 +2,14 @@
 import { useState, useEffect } from "react";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
-import {
-  generateSystemHealth,
-  generateAlerts,
-  generateThreatData,
-} from "@/utils/mockData";
+
+import * as api from "@/services/api";
+
 import DataFetcher from "@/components/dashboard/DataFetcher";
 import dynamic from "next/dynamic";
 import CyberLoader from "@/components/ui/CyberLoader";
+
+
 
 // Dynamically import ThreatChart to avoid SSR issues with Chart.js
 const ThreatChart = dynamic(
@@ -21,6 +21,7 @@ const ThreatChart = dynamic(
     ssr: false,
   }
 );
+
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading } = useAuthContext();
@@ -44,8 +45,9 @@ export default function Dashboard() {
     const loadThreatData = async () => {
       try {
         setThreatDataLoading(true);
-        const data = await generateThreatData();
-        setThreatData(data);
+        const data = await api.dashboardApi.getThreatData();
+        console.log(data)
+        setThreatData(data as any);
       } catch (error) {
         console.error("Error loading threat data:", error);
       } finally {
@@ -58,14 +60,6 @@ export default function Dashboard() {
     }
   }, [pageLoading, isAuthenticated]);
 
-  // Handle data fetching functions
-  const fetchSystemHealth = async () => {
-    return generateSystemHealth();
-  };
-
-  const fetchAlerts = async () => {
-    return generateAlerts(6);
-  };
 
   // Show loading indicator while authentication is being checked
   if (isLoading || pageLoading) {
@@ -130,12 +124,12 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <DataFetcher
           title="System Health"
-          fetchData={fetchSystemHealth}
+          fetchData={api.dashboardApi.getSystemHealth}
           interval={30000}
         />
         <DataFetcher
           title="Recent Alerts"
-          fetchData={fetchAlerts}
+          fetchData={api.dashboardApi.getAlerts}
           interval={15000}
         />
       </div>

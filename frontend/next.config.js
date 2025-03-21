@@ -3,11 +3,27 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: ['randomuser.me'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
   },
   sentry: {
     disableServerWebpackPlugin: true,
     disableClientWebpackPlugin: true,
-  }
+  },
+  env: {
+    NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING
+  },
+  swcMinify: true,
+  typescript: {
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+    }
+    return config;
+  },
 };
 
 // Sentry configuration
@@ -16,8 +32,6 @@ const { withSentryConfig } = require("@sentry/nextjs");
 module.exports = withSentryConfig(
   nextConfig,
   {
-    // For all available options, see:
-    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
     org: "byukusenge-andre",
     project: "javascript-nextjs-jz",

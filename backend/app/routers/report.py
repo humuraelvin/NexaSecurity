@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional, Dict
-from app.core.database import get_db
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from app.core.database import get_database
 from app.services.auth import get_current_user
-from app.services.report import report_generator
-from app.models.user import User
+from app.services.report import ReportGenerator
+from app.models.user import UserInDB
 from app.models.report import Report, ReportTemplate, ReportType, ReportFormat
 from app.models.scan import Scan
 from app.models.pentest import PenetrationTest
@@ -84,8 +86,8 @@ async def generate_report(
     *,
     report_in: ReportCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Generate a new report.
@@ -119,6 +121,9 @@ async def generate_report(
                 status_code=404,
                 detail="Penetration test not found"
             )
+
+    # Create generator instance with db
+    report_generator = ReportGenerator(db)
 
     # Create report record
     report = Report(
@@ -163,8 +168,8 @@ async def generate_report(
 @router.get("/{report_id}", response_model=ReportResponse)
 async def get_report(
     report_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get report by ID.
@@ -189,8 +194,8 @@ async def get_report(
 @router.get("/{report_id}/download")
 async def download_report(
     report_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+   db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Download report file.
@@ -225,8 +230,8 @@ async def download_report(
 @router.delete("/{report_id}")
 async def delete_report(
     report_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Delete report.
@@ -260,8 +265,8 @@ async def list_reports(
     skip: int = 0,
     limit: int = 10,
     report_type: Optional[ReportType] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+  db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     List user's reports.
@@ -277,8 +282,8 @@ async def list_reports(
 async def create_template(
     *,
     template_in: ReportTemplateCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+   db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Create new report template.
@@ -297,8 +302,8 @@ async def create_template(
 @router.get("/templates/{template_id}", response_model=ReportTemplateResponse)
 async def get_template(
     template_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+  db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Get report template by ID.
@@ -326,8 +331,8 @@ async def list_templates(
     limit: int = 10,
     report_type: Optional[ReportType] = None,
     format: Optional[ReportFormat] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+   db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     List available report templates.
@@ -348,7 +353,7 @@ async def list_templates(
 async def delete_template(
     template_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ) -> Any:
     """
     Delete report template.
