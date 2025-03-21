@@ -1,14 +1,14 @@
 "use client"
 import { useEffect, useRef } from 'react';
-import { format } from 'date-fns';
 import { Chart, registerables } from 'chart.js';
+import CyberLoader from '@/components/ui/CyberLoader';
+import { TrendDataPoint } from '@/types/dashboard';
 
-// Register Chart.js components
 Chart.register(...registerables);
 
 interface ThreatChartProps {
-  data: any[];
-  isLoading?: boolean;
+  data: TrendDataPoint[];
+  isLoading: boolean;
 }
 
 export default function ThreatChart({ data, isLoading }: ThreatChartProps) {
@@ -16,86 +16,117 @@ export default function ThreatChart({ data, isLoading }: ThreatChartProps) {
   const chartInstance = useRef<Chart | null>(null);
 
   useEffect(() => {
-    if (isLoading || !data || !chartRef.current) return;
+    if (isLoading || !data || data.length === 0) return;
 
-    // Destroy previous chart instance if it exists
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
+    // Group data by date and severity
+    const groupedData = data.reduce((acc, item) => {
+      if (!acc[item.date]) {
+        acc[item.date] = {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+          info: 0
+        };
+      }
+      acc[item.date][item.severity] = item.count;
+      return acc;
+    }, {} as Record<string, Record<string, number>>);
+
+    // Sort dates
+    const sortedDates = Object.keys(groupedData).sort((a, b) => 
+      new Date(a).getTime() - new Date(b).getTime()
+    );
+
+    // Prepare datasets
+    const datasets = [
+      {
+        label: 'Critical',
+        data: sortedDates.map(date => groupedData[date].critical || 0),
+        backgroundColor: 'rgba(255, 0, 0, 0.5)',
+        borderColor: 'rgba(255, 0, 0, 1)',
+        borderWidth: 1
+      },
+      {
+        label: 'High',
+        data: sortedDates.map(date => groupedData[date].high || 0),
+        backgroundColor: 'rgba(255, 165, 0, 0.5)',
+        borderColor: 'rgba(255, 165, 0, 1)',
+        borderWidth: 1
+      },
+      {
+        label: 'Medium',
+        data: sortedDates.map(date => groupedData[date].medium || 0),
+        backgroundColor: 'rgba(255, 255, 0, 0.5)',
+        borderColor: 'rgba(255, 255, 0, 1)',
+        borderWidth: 1
+      },
+      {
+        label: 'Low',
+        data: sortedDates.map(date => groupedData[date].low || 0),
+        backgroundColor: 'rgba(0, 128, 0, 0.5)',
+        borderColor: 'rgba(0, 128, 0, 1)',
+        borderWidth: 1
+      }
+    ];
+
+    if (chartRef.current) {
+      // Destroy previous chart if it exists
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+
+      // Create new chart
+      const ctx = chartRef.current.getContext('2d');
+      if (ctx) {
+        chartInstance.current = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: sortedDates,
+            datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                stacked: true,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              },
+              y: {
+                stacked: true,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                titleColor: 'rgba(255, 255, 255, 1)',
+                bodyColor: 'rgba(255, 255, 255, 0.8)',
+                displayColors: true
+              }
+            }
+          }
+        });
+      }
     }
 
-    const ctx = chartRef.current.getContext('2d');
-    if (!ctx) return;
-
-    // Process data for the chart
-    const labels = data.map(item => format(new Date(item.timestamp), 'HH:mm'));
-    const values = data.map(item => item.threats);
-
-    // Create new chart
-    chartInstance.current = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Threats',
-            data: values,
-            borderColor: '#22d3ee',
-            backgroundColor: 'rgba(34, 211, 238, 0.1)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false,
-          },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: 'rgba(17, 24, 39, 0.8)',
-            titleColor: '#ffffff',
-            bodyColor: '#d1d5db',
-            borderColor: '#374151',
-            borderWidth: 1,
-          },
-        },
-        scales: {
-          x: {
-            grid: {
-              color: 'rgba(75, 85, 99, 0.2)',
-            },
-            ticks: {
-              color: '#9ca3af',
-              maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 12,
-            },
-          },
-          y: {
-            grid: {
-              color: 'rgba(75, 85, 99, 0.2)',
-            },
-            ticks: {
-              color: '#9ca3af',
-            },
-            beginAtZero: true,
-          },
-        },
-        interaction: {
-          mode: 'nearest',
-          intersect: false,
-        },
-      },
-    });
-
-    // Cleanup function
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy();
@@ -104,16 +135,16 @@ export default function ThreatChart({ data, isLoading }: ThreatChartProps) {
   }, [data, isLoading]);
 
   if (isLoading) {
+    return <CyberLoader />;
+  }
+
+  if (!data || data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-cyan-400 border-r-transparent"></div>
+      <div className="h-full flex items-center justify-center">
+        <p className="text-gray-400">No threat data available</p>
       </div>
     );
   }
 
-  return (
-    <div className="h-64">
-      <canvas ref={chartRef} />
-    </div>
-  );
-} 
+  return <canvas ref={chartRef} />;
+}

@@ -25,6 +25,8 @@ export const scanService = {
         const response = await api.post('/scans/start', formData);
         return response;
       }
+      
+      // Regular JSON request without file
       const response = await api.post('/scans/start', config);
       return response;
     } catch (error) {

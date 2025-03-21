@@ -1,4 +1,3 @@
-// Service worker file
 const CACHE_NAME = 'nexa-security-cache-v1';
 
 // Add API routes that should be cached
@@ -51,4 +50,4 @@ self.addEventListener('fetch', (event) => {
         });
       })
   );
-}); 
+});
