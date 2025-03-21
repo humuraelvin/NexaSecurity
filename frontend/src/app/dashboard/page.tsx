@@ -9,8 +9,6 @@ import DataFetcher from "@/components/dashboard/DataFetcher";
 import dynamic from "next/dynamic";
 import CyberLoader from "@/components/ui/CyberLoader";
 
-
-
 // Dynamically import ThreatChart to avoid SSR issues with Chart.js
 const ThreatChart = dynamic(
   () => import("@/components/dashboard/ThreatChart"),
@@ -21,7 +19,6 @@ const ThreatChart = dynamic(
     ssr: false,
   }
 );
-
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading } = useAuthContext();
@@ -46,10 +43,22 @@ export default function Dashboard() {
       try {
         setThreatDataLoading(true);
         const data = await api.dashboardApi.getThreatData();
-        console.log(data)
-        setThreatData(data as any);
+        console.log("Threat data:", data);
+
+        // Ensure we're setting an array
+        if (Array.isArray(data)) {
+          setThreatData(data);
+        } else if (data && data.data && Array.isArray(data.data)) {
+          // Handle case where API returns {status, data} format
+          setThreatData(data.data);
+        } else {
+          // Set empty array if invalid data
+          console.error("Invalid threat data format:", data);
+          setThreatData([]);
+        }
       } catch (error) {
         console.error("Error loading threat data:", error);
+        setThreatData([]);
       } finally {
         setThreatDataLoading(false);
       }
@@ -59,7 +68,6 @@ export default function Dashboard() {
       loadThreatData();
     }
   }, [pageLoading, isAuthenticated]);
-
 
   // Show loading indicator while authentication is being checked
   if (isLoading || pageLoading) {
