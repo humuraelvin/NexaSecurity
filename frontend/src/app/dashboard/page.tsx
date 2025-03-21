@@ -1,22 +1,32 @@
-"use client"
+"use client";
 import { useState, useEffect } from "react";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
+
 import * as api from "@/services/api";
+
 import DataFetcher from "@/components/dashboard/DataFetcher";
 import dynamic from "next/dynamic";
 import CyberLoader from "@/components/ui/CyberLoader";
 
-// Lazy load heavy components
-const ThreatChart = dynamic(() => import('@/components/dashboard/ThreatChart'), {
-  loading: () => <div>Loading chart...</div>,
-  ssr: false // Disable server-side rendering for this component
-});
+
+
+// Dynamically import ThreatChart to avoid SSR issues with Chart.js
+const ThreatChart = dynamic(
+  () => import("@/components/dashboard/ThreatChart"),
+  {
+    loading: () => (
+      <div className="h-80 bg-gray-900/50 backdrop-blur-sm border border-gray-800/60 rounded-lg animate-pulse"></div>
+    ),
+    ssr: false,
+  }
+);
+
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading } = useAuthContext();
   const router = useRouter();
-  const [dateRange, setDateRange] = useState("28 Jan - 28 Dec, 2023");
+  const [dateRange] = useState("28 Jan - 28 Dec, 2023");
   const [pageLoading, setPageLoading] = useState(true);
   const [threatData, setThreatData] = useState([]);
   const [threatDataLoading, setThreatDataLoading] = useState(true);
@@ -24,7 +34,7 @@ export default function Dashboard() {
   // Check authentication
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/auth/login');
+      router.replace("/auth/login");
       return;
     }
     setPageLoading(false);
@@ -50,6 +60,7 @@ export default function Dashboard() {
     }
   }, [pageLoading, isAuthenticated]);
 
+
   // Show loading indicator while authentication is being checked
   if (isLoading || pageLoading) {
     return <CyberLoader text="Loading dashboard..." />;
@@ -69,8 +80,18 @@ export default function Dashboard() {
         <div className="relative">
           <button className="bg-gray-900/50 backdrop-blur-sm border border-gray-800/60 px-4 py-2 rounded-md flex items-center text-sm">
             {dateRange}
-            <svg className="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className="ml-2 h-4 w-4 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
         </div>
@@ -85,12 +106,16 @@ export default function Dashboard() {
             <p className="text-lg font-medium">{user.email}</p>
           </div>
           <div className="p-4 border border-gray-800 rounded">
-            <h3 className="text-sm font-medium text-gray-400">Account Status</h3>
+            <h3 className="text-sm font-medium text-gray-400">
+              Account Status
+            </h3>
             <p className="text-lg font-medium text-green-400">Active</p>
           </div>
           <div className="p-4 border border-gray-800 rounded">
             <h3 className="text-sm font-medium text-gray-400">Subscription</h3>
-            <p className="text-lg font-medium text-cyan-400">{user.subscription_tier || 'Basic'}</p>
+            <p className="text-lg font-medium text-cyan-400">
+              {user.subscription_tier || "Basic"}
+            </p>
           </div>
         </div>
       </div>
@@ -118,4 +143,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-} 
+}

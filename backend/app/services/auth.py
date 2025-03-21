@@ -4,7 +4,6 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from app.core.config import settings
@@ -204,8 +203,10 @@ async def blacklist_refresh_token(
     )
 
 async def get_current_user(
-    token: str,
-    db = Depends(get_database)
+
+    token: str = Depends(oauth2_scheme),
+    db: AsyncIOMotorDatabase = Depends(get_database) 
+
 ) -> UserInDB:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
