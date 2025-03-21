@@ -1,9 +1,9 @@
-"use client"
-import { createContext, useContext, ReactNode, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, usePathname } from 'next/navigation';
-import CyberLoader from '@/components/ui/CyberLoader';
-import { authApi } from '@/services/api';
+"use client";
+import { createContext, useContext, ReactNode, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter, usePathname } from "next/navigation";
+import CyberLoader from "@/components/ui/CyberLoader";
+import { authApi } from "@/services/api";
 
 interface User {
   id?: string;
@@ -19,41 +19,42 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
-  signup: (email: string, password: string, name: string, company?: string, plan?: string | null) => Promise<any>;
+  signup: (
+    email: string,
+    password: string,
+    name: string,
+    company?: string,
+    plan?: string | null
+  ) => Promise<any>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { 
-    user, 
-    setUser,
-    isAuthenticated, 
-    setIsAuthenticated,
-    isLoadingUser 
-  } = useAuth();
-  
+  const { user, setUser, isAuthenticated, setIsAuthenticated, isLoadingUser } =
+    useAuth();
+
   const router = useRouter();
   const pathname = usePathname();
-  
+
   // Protected routes that require authentication
   const protectedRoutes = [
-    '/dashboard',
-    '/profile',
-    '/security',
-    '/subscriptions',
-    '/settings'
+    "/dashboard",
+    "/profile",
+    "/security",
+    "/subscriptions",
+    "/settings",
   ];
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
       if (!token || !storedUser) {
-        if (protectedRoutes.some(route => pathname?.startsWith(route))) {
-          router.push('/auth/login');
+        if (protectedRoutes.some((route) => pathname?.startsWith(route))) {
+          router.push("/auth/login");
         }
         return;
       }
@@ -63,11 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         setIsAuthenticated(true);
       } catch (e) {
-        console.error('Error parsing stored user data:', e);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        if (protectedRoutes.some(route => pathname?.startsWith(route))) {
-          router.push('/auth/login');
+        console.error("Error parsing stored user data:", e);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        if (protectedRoutes.some((route) => pathname?.startsWith(route))) {
+          router.push("/auth/login");
         }
       }
     };
@@ -81,25 +82,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: { email: string; password: string }) => {
     try {
       const response = await authApi.login(credentials);
-      
+
       if (response.access_token) {
-        localStorage.setItem('token', response.access_token);
+        localStorage.setItem("token", response.access_token);
         if (response.refresh_token) {
-          localStorage.setItem('refresh_token', response.refresh_token);
+          localStorage.setItem("refresh_token", response.refresh_token);
         }
+
+        // Create user data object from response
         const userData: User = {
           email: credentials.email,
           is_active: true,
           // Add any additional user data from the response
-          ...(response.user || {})
+          ...(response.user || {}),
         };
-        
-        localStorage.setItem('user', JSON.stringify(userData));
+
+        localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
         setIsAuthenticated(true);
-        
+
         // Use replace instead of push to prevent back navigation to login
-        router.replace('/dashboard');
+        router.replace("/dashboard");
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -109,9 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Simplified signup function
   const signup = async (
-    email: string, 
-    password: string, 
-    name: string, 
+    email: string,
+    password: string,
+    name: string,
     company?: string,
     plan?: string | null
   ) => {
@@ -121,19 +124,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         name,
         company,
-        plan: plan || "basic"
+        plan: plan || "basic",
       });
-      
+
       // After successful signup, log the user in
       await login({ email, password });
-      
+
       return signupData;
     } catch (error) {
       console.error("Signup error:", error);
       throw error;
     }
   };
-  
+
   // Simplified logout function
   const logout = async () => {
     try {
@@ -142,19 +145,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Logout error:", error);
     } finally {
       // Always clear local state
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
       setUser(null);
       setIsAuthenticated(false);
-      router.replace('/');
+      router.replace("/");
     }
   };
 
+  // Show loading state while checking authentication
   if (isLoadingUser) {
     return <CyberLoader text="Initializing secure environment..." />;
   }
-  
+
   return (
     <AuthContext.Provider
       value={{
@@ -174,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuthContext() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
+    throw new Error("useAuthContext must be used within an AuthProvider");
   }
   return context;
-} 
+}
